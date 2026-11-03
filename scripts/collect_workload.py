@@ -48,6 +48,34 @@ def write_csv(path, header, rows):
 # throughput metric report the cap: 9.99 Gbit/s on every profile while TCP on
 # the same loopback reached 55 Gbit/s.
 DEFAULT_UDP_RATE = "0"
+# iperf3 rejects a UDP -l above this. TCP may still use the larger workbook length.
+UDP_MAX_BLOCK_BYTES = 65507
+
+
+def _block_bytes(text: str) -> int | None:
+    raw = str(text or "").strip()
+    if not raw:
+        return None
+    unit = raw[-1].upper() if raw[-1].isalpha() else ""
+    number = raw[:-1] if unit else raw
+    if unit and unit not in {"K", "M", "G"}:
+        return None
+    try:
+        value = float(number)
+    except ValueError:
+        return None
+    scale = {"": 1, "K": 1024, "M": 1024 ** 2, "G": 1024 ** 3}[unit]
+    return int(value * scale)
+
+
+def udp_block_length(text: str) -> str:
+    """Keep a UDP block the workbook can name. iperf3's maximum datagram is 65507 bytes."""
+    size = _block_bytes(text)
+    if size is None:
+        return str(text or "").strip()
+    if size > UDP_MAX_BLOCK_BYTES:
+        return str(UDP_MAX_BLOCK_BYTES)
+    return str(text).strip()
 
 
 def udp_rate(raw) -> str:
@@ -94,7 +122,7 @@ def _stop(proc: subprocess.Popen | None) -> None:
         proc.kill()
 
 
-def iperf(protocol: str, port: int, seconds: int, streams: int, reverse, bandwidth: str):
+def iperf(protocol: str, port: int, seconds: int, streams: int, reverse, bandwidth: str, length: str = "", window: str = "", omit: str = "0"):
     last_error = ""
     budget = client_timeout(seconds)
     for candidate in (port, port + 1, port + 2):
@@ -112,8 +140,20 @@ def iperf(protocol: str, port: int, seconds: int, streams: int, reverse, bandwid
             "iperf3", "-c", "127.0.0.1", "-p", str(candidate),
             "-t", str(seconds), "-P", str(streams), "-i", "0", "-J",
         ]
+        block = str(length).strip()
         if protocol == "udp":
             cmd += ["-u", "-b", bandwidth]
+            block = udp_block_length(block)
+        if block:
+            cmd += ["-l", block]
+        if str(window).strip():
+            cmd += ["-w", str(window).strip()]
+        try:
+            omit_s = int(float(omit or 0))
+        except (TypeError, ValueError):
+            omit_s = 0
+        if omit_s > 0:
+            cmd += ["-O", str(omit_s)]
         if str(reverse).lower() in {"true", "1", "yes"}:
             cmd.append("-R")
         try:
@@ -123,6 +163,10 @@ def iperf(protocol: str, port: int, seconds: int, streams: int, reverse, bandwid
             last_error = f"iperf3 {protocol} client exceeded {budget}s"
             continue
         _stop(server)
+        if completed.returncode != 0 and not (completed.stdout or "").strip():
+            detail = (completed.stderr or "").strip().splitlines()
+            last_error = detail[0] if detail else f"iperf3 {protocol} client exited {completed.returncode}"
+            continue
         try:
             payload = json.loads(completed.stdout or "{}")
         except json.JSONDecodeError:
@@ -157,6 +201,9 @@ def main() -> int:
     reverse = pv(params, "reverse_mode", args.profile, False)
     protocols = as_list(pv(params, "protocol", args.profile, "tcp,udp"))
     bandwidth = udp_rate(pv(params, "bandwidth_limit", args.profile, pv(params, "bandwidth", args.profile, pv(params, "udp_bandwidth", args.profile, ""))))
+    length = str(pv(params, "buffer_length", args.profile, "") or "")
+    window = str(pv(params, "window_size", args.profile, "") or "")
+    omit = str(pv(params, "omit_initial_seconds", args.profile, "0") or "0")
     Path(args.run_dir).mkdir(parents=True, exist_ok=True)
     header = [
         "sample_index", "status", "protocol", "parallel_streams", "tcp_loopback_gbps",
@@ -165,7 +212,7 @@ def main() -> int:
     ]
     rows = []
     for proto in protocols or ["tcp", "udp"]:
-        bits, jitter, lost, retr, error = iperf(proto.lower(), port, seconds, streams, reverse, bandwidth)
+        bits, jitter, lost, retr, error = iperf(proto.lower(), port, seconds, streams, reverse, bandwidth, length, window, omit)
         gb_s = bits / 1e9 if not error else ""
         is_tcp = proto.lower() == "tcp"
         rows.append({
