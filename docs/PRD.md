@@ -21,7 +21,7 @@ Run iperf3 -J client tests for each yaml protocol against 127.0.0.1, spawning ip
 Measure TCP/UDP loopback throughput and stability
 
 ## Validation Objective
-Validates iperf3 TCP and UDP JSON runs over loopback (127.0.0.1) on one host. This is not a NIC or VM-to-VM test
+Validates iperf3 TCP and UDP JSON runs over loopback (127.0.0.1) on one host
 
 ## Workload Category
 Memory, Bandwidth & Data Movement
