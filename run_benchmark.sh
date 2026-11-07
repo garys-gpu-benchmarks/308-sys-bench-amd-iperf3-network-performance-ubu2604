@@ -16,12 +16,11 @@ capture_benchmark_run_command_submitted "$@"
 
 usage() {
   cat <<'USAGE'
+
 Usage: bash run_benchmark.sh [OPTIONS]
 
 Workload Name:          iPerf3 TCP/UDP Sweep.
 Main Goal:              Measure TCP/UDP loopback throughput and stability.
-Validation Objective:   Validates iperf3 TCP and UDP JSON runs over loopback (127.0.0.1) on one
-                        host.
 Command Tools Executed: Run iperf3 -s -1 then iperf3 -c 127.0.0.1 -J for each yaml protocol.
 
 Profiles (default: --smoke):
