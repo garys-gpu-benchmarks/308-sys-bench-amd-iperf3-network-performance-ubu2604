@@ -40,6 +40,11 @@
     "value": "Run iperf3 -s -1 then iperf3 -c 127.0.0.1 -J for each yaml protocol"
   },
   {
+    "field_name": "Execution Description With Parameters",
+    "source_file": "BenchmarkSpecDefinitions.xlsx::Workload_Definitions",
+    "value": "Runs iperf3 JSON client tests against a one-shot loopback server on 127.0.0.1. protocol: tcp,udp. port: listen/connect port with +1/+2 fallback. time: seconds. parallel_streams: -P. bandwidth_limit: UDP -b target rate (default 10G; empty or 0 uses 10G). reverse_mode: optional -R. There is no remote-peer override. output_format: csv"
+  },
+  {
     "field_name": "Metrics",
     "source_file": "BenchmarkSpecDefinitions.xlsx::Workload_Definitions",
     "value": "#1: TCP loopback throughput (tcp_loopback_gbps); #2: UDP loopback throughput (udp_throughput_gbps); #3: UDP jitter (udp_jitter_ms); #4: Packet loss, percent (packet_loss_rate); #5: TCP retransmit count per run (tcp_retransmit_count)"
@@ -173,11 +178,6 @@
     "field_name": "Command Methodology",
     "source_file": "BenchmarkSpecDefinitions.xlsx::Workload_Definitions",
     "value": "Start a one-shot iperf3 -s -1 server and run iperf3 -J client tests for each yaml protocol against 127.0.0.1, to measure TCP throughput, UDP jitter, packet loss, and retransmits. There is no BENCHMARK_IPERF_PEER override"
-  },
-  {
-    "field_name": "Execution Description With Parameters",
-    "source_file": "BenchmarkSpecDefinitions.xlsx::Workload_Definitions",
-    "value": "Runs iperf3 JSON client tests against a one-shot loopback server on 127.0.0.1. protocol: tcp,udp. port: listen/connect port with +1/+2 fallback. time: seconds. parallel_streams: -P. bandwidth_limit: UDP -b target rate (default 10G; empty or 0 uses 10G). reverse_mode: optional -R. There is no remote-peer override. output_format: csv"
   },
   {
     "field_name": "Execution Domain",
